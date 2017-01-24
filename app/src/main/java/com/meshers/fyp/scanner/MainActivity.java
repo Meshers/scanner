@@ -1,23 +1,19 @@
 package com.meshers.fyp.scanner;
 
+import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
-import android.os.Environment;
+import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.List;
 
@@ -26,17 +22,22 @@ public class MainActivity extends AppCompatActivity {
     WifiManager mWifiManager;
 
     private final static String TAG = "MainActivity";
-    private final static String WIFI_FILE_NAME = "WIFI_";
 
-    private long mLastScanStarted;
-    private File mWifiResultsFile;
+    private long mLastWifiScanStarted;
+    private WifiLogger mWifiLogger;
+    private BtLogger mBtLogger;
+    private BtHelper mBtHelper;
 
     private TextView mWifiTv;
+    private TextView mBtTv;
 
     private HashSet<String> mWifiDiscoveredSet;
     private HashSet<String> mWifiDiscoveredSet2;
 
-    private boolean mReceiverRegistered = false;
+    private HashSet<String> mBtDiscoveredSet;
+
+    private boolean mWifiReceiverRegistered = false;
+    private boolean mBtReceiverRegistered = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,10 +45,38 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mWifiTv = (TextView) findViewById(R.id.wifi_tv);
+        mBtTv = (TextView) findViewById(R.id.bt_tv);
 
         mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
 
-        startClicked(null);
+        MyBluetoothAdapter adapter = new MyBluetoothAdapter(this);
+
+        mBtHelper = new BtHelper(adapter, new DeviceDiscoveryHandler() {
+            long mLastScanStarted;
+
+            @Override
+            public void handleDiscovery(BluetoothDevice receivedPacket) {
+                mBtDiscoveredSet.add(receivedPacket.getAddress());
+                mBtTv.setText("" + mBtDiscoveredSet.size());
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                    mBtLogger.writeScanResults(receivedPacket, mLastScanStarted,
+                            System.currentTimeMillis());
+                }
+            }
+
+            @Override
+            public void handleStarted() {
+                mLastScanStarted = System.currentTimeMillis();
+                mBtLogger.writeScanTiming(BtLogger.ScanType.STARTED, mLastScanStarted);
+            }
+
+            @Override
+            public void handleFinished() {
+                mBtLogger.writeScanTiming(BtLogger.ScanType.FINISHED, System.currentTimeMillis());
+                mBtLogger.writeScanTiming(BtLogger.ScanType.REQUESTED, System.currentTimeMillis());
+                mBtHelper.startDiscovery();
+            }
+        });
     }
 
     BroadcastReceiver mWifiScanReceiver = new BroadcastReceiver() {
@@ -62,8 +91,8 @@ public class MainActivity extends AppCompatActivity {
                 // add your logic here
                 Log.d(TAG, "Scan results are:" + scanResults);
                 mWifiTv.setText(mWifiDiscoveredSet.size() + ":" + mWifiDiscoveredSet2.size());
-                writeScanResults(scanResults, mLastScanStarted, System.currentTimeMillis());
-                startScan();
+                mWifiLogger.writeScanResults(scanResults, mLastWifiScanStarted, System.currentTimeMillis());
+                startWifiScan();
             }
         }
     };
@@ -75,58 +104,52 @@ public class MainActivity extends AppCompatActivity {
         registerReceiver(mWifiScanReceiver, intentFilter);
     }
 
-    private void writeScanResults(List<ScanResult> results, long startTime, long endTime) {
-
-        try {
-            PrintWriter pw = new PrintWriter(new FileOutputStream(mWifiResultsFile, true));
-            String line = "";
-            for (ScanResult result : results) {
-                line += startTime
-                        + "," + endTime
-                        + "," + result.SSID
-                        + "," + result.BSSID
-                        + "," + result.frequency
-                        + "," + result.level;
-                pw.println(line);
-            }
-            pw.close();
-        } catch (FileNotFoundException e) {
-            Log.e(TAG, "Failed writing WIFI results", e);
-        }
-    }
-
     public void startClicked(View v) {
         mWifiDiscoveredSet = new HashSet<>();
         mWifiDiscoveredSet2 = new HashSet<>();
-        mWifiResultsFile = new File(Environment.getExternalStorageDirectory() + "/" + WIFI_FILE_NAME
-                + System.currentTimeMillis() +".csv");
-        try {
-            mWifiResultsFile.createNewFile();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        try {
-            PrintWriter pw = new PrintWriter(mWifiResultsFile);
-            pw.println("StartTime,EndTime,SSID,BSSID,Frequency,Level");
-            pw.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-
-        startScan();
+        mWifiLogger = new WifiLogger();
+        startWifiScan();
     }
 
     public void stopClicked(View v) {
+        if (!mWifiReceiverRegistered) {
+            return;
+        }
+        mWifiReceiverRegistered = false;
         unregisterReceiver(mWifiScanReceiver);
     }
 
-    public void startScan() {
-        mLastScanStarted = System.currentTimeMillis();
+
+    public void startBtClicked(View v) {
+        mBtDiscoveredSet = new HashSet<>();
+        mBtLogger = new BtLogger();
+        if (!mBtReceiverRegistered) {
+            mBtHelper.startListening();
+            mBtReceiverRegistered = true;
+        }
+        startBtScan();
+    }
+
+
+    public void stopBtClicked(View v) {
+        if (!mBtReceiverRegistered) {
+            return;
+        }
+        mBtHelper.stopListening();
+        mBtReceiverRegistered = false;
+    }
+
+    public void startWifiScan() {
+        mLastWifiScanStarted = System.currentTimeMillis();
         mWifiManager.startScan();
 
-        if (!mReceiverRegistered) {
+        if (!mWifiReceiverRegistered) {
             registerWifiReceiver();
-            mReceiverRegistered = true;
+            mWifiReceiverRegistered = true;
         }
+    }
+
+    public void startBtScan() {
+        mBtHelper.startDiscovery();
     }
 }
