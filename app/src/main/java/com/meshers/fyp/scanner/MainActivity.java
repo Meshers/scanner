@@ -15,6 +15,7 @@ import android.widget.TextView;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashSet;
@@ -35,57 +36,49 @@ public class MainActivity extends AppCompatActivity {
     private HashSet<String> mWifiDiscoveredSet;
     private HashSet<String> mWifiDiscoveredSet2;
 
+    private boolean mReceiverRegistered = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         mWifiTv = (TextView) findViewById(R.id.wifi_tv);
-        mWifiDiscoveredSet = new HashSet<>();
-        mWifiDiscoveredSet2 = new HashSet<>();
-        mWifiResultsFile = new File(Environment.getExternalStorageDirectory() + "/" + WIFI_FILE_NAME
-                + System.currentTimeMillis());
-        try {
-            mWifiResultsFile.createNewFile();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        registerWifiReceiver();
 
         mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+
+        startClicked(null);
     }
+
+    BroadcastReceiver mWifiScanReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent intent) {
+            if (intent.getAction().equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
+                List<ScanResult> scanResults = mWifiManager.getScanResults();
+                for (ScanResult result : scanResults) {
+                    mWifiDiscoveredSet.add(result.BSSID);
+                    mWifiDiscoveredSet2.add(result.SSID);
+                }
+                // add your logic here
+                Log.d(TAG, "Scan results are:" + scanResults);
+                mWifiTv.setText(mWifiDiscoveredSet.size() + ":" + mWifiDiscoveredSet2.size());
+                writeScanResults(scanResults, mLastScanStarted, System.currentTimeMillis());
+                startScan();
+            }
+        }
+    };
 
     private void registerWifiReceiver() {
 
         IntentFilter intentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
 
-        BroadcastReceiver mWifiScanReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context c, Intent intent) {
-                if (intent.getAction().equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
-                    List<ScanResult> scanResults = mWifiManager.getScanResults();
-                    for (ScanResult result : scanResults) {
-                        mWifiDiscoveredSet.add(result.BSSID);
-                        mWifiDiscoveredSet2.add(result.SSID);
-                    }
-                    // add your logic here
-                    Log.d(TAG, "Scan results are:" + scanResults);
-                    mWifiTv.setText(mWifiDiscoveredSet.size() + ":" + mWifiDiscoveredSet2.size());
-                    writeScanResults(scanResults, mLastScanStarted, System.currentTimeMillis());
-                    startScan();
-                }
-            }
-        };
-
         registerReceiver(mWifiScanReceiver, intentFilter);
-
     }
 
     private void writeScanResults(List<ScanResult> results, long startTime, long endTime) {
 
         try {
-            PrintWriter pw = new PrintWriter(mWifiResultsFile);
+            PrintWriter pw = new PrintWriter(new FileOutputStream(mWifiResultsFile, true));
             String line = "";
             for (ScanResult result : results) {
                 line += startTime
@@ -94,9 +87,8 @@ public class MainActivity extends AppCompatActivity {
                         + "," + result.BSSID
                         + "," + result.frequency
                         + "," + result.level;
-
+                pw.println(line);
             }
-            pw.println(line);
             pw.close();
         } catch (FileNotFoundException e) {
             Log.e(TAG, "Failed writing WIFI results", e);
@@ -107,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
         mWifiDiscoveredSet = new HashSet<>();
         mWifiDiscoveredSet2 = new HashSet<>();
         mWifiResultsFile = new File(Environment.getExternalStorageDirectory() + "/" + WIFI_FILE_NAME
-                + System.currentTimeMillis());
+                + System.currentTimeMillis() +".csv");
         try {
             mWifiResultsFile.createNewFile();
         } catch (IOException e) {
@@ -120,12 +112,21 @@ public class MainActivity extends AppCompatActivity {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
+
         startScan();
+    }
+
+    public void stopClicked(View v) {
+        unregisterReceiver(mWifiScanReceiver);
     }
 
     public void startScan() {
         mLastScanStarted = System.currentTimeMillis();
         mWifiManager.startScan();
 
+        if (!mReceiverRegistered) {
+            registerWifiReceiver();
+            mReceiverRegistered = true;
+        }
     }
 }
