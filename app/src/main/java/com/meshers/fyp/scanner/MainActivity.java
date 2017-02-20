@@ -9,11 +9,13 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
+import java.io.UnsupportedEncodingException;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
@@ -54,13 +56,16 @@ public class MainActivity extends AppCompatActivity {
 
         final MyBluetoothAdapter adapter = new MyBluetoothAdapter(this);
 
-        ACKBits = new BitSet(250); //Need to change this absolute value
+        ACKBits = new BitSet(256); //Need to change this absolute value
+        ACKBits.clear();
+        final byte fromAddr = (byte)0; //Teacher's Device Addr set to 0
 
         mBtHelper = new BtHelper(adapter, new DeviceDiscoveryHandler() {
             long mLastScanStarted;
 
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
-            public void handleDiscovery(BluetoothDevice receivedPacket) {
+            public void handleDiscovery(BluetoothDevice receivedPacket) throws UnsupportedEncodingException {
                 mBtDiscoveredSet.add(receivedPacket.getAddress());
                 mBtTv.setText("" + mBtDiscoveredSet.size());
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
@@ -69,12 +74,30 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 //ACKing mechanism
+                //Dirty Testing
+//                String data = "12000:1000000000000000000000000000000000000000000000000";
+//                byte[] dataByte = data.getBytes("UTF-8");
+//                byte[] pdu = new byte[1 + dataByte.length];
+//                pdu[0] = (byte)100;
+//                System.arraycopy(dataByte, 0, pdu, 1, dataByte.length);
+//                //Log.d("PDU: ", Arrays.toString(pdu));
+
+//                String pduString = new String(pdu, "UTF-8");
+
                 String mBTName = receivedPacket.getName();
-                byte[] packetMessage = mBTName.getBytes();
+                byte[] packetMessage = mBTName.getBytes("UTF-8");
                 byte receivedPacketID = packetMessage[0];
-                ACKBits.set(receivedPacketID);
-                
-                adapter.setName(ACKBits.toString());
+                //Log.d("PacketID: ", String.valueOf(receivedPacketID));
+                if(!ACKBits.get(receivedPacketID)){
+                    ACKBits.set(receivedPacketID);
+                    //Log.d("ACKBitsString:", ACKBits.toString());
+                }
+
+                //Needs complete modification for final product
+                String ACKString = ACKBits.toString(); //Creates a string like {100,1,20} where 100,1,20 are the set bits
+                String pdu =  String.valueOf(fromAddr) + ACKString; //Creates a PDU like 0{100,1,20}
+                Log.d("PDU:", pdu);
+                adapter.setName(pdu); //Sets it as name of the BT Device
             }
 
             @Override

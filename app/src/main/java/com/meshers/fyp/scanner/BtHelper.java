@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
+import java.io.UnsupportedEncodingException;
+
 
 public class BtHelper {
 
@@ -31,7 +33,11 @@ public class BtHelper {
             // Get the BluetoothDevice object from the Intent
             BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
             if (device!= null) {
-                mDiscoveryHandler.handleDiscovery(device);
+                try {
+                    mDiscoveryHandler.handleDiscovery(device);
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
             }
         }
     };
