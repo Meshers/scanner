@@ -8,12 +8,13 @@ import android.content.IntentFilter;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Build;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
+import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
 
@@ -39,6 +40,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean mWifiReceiverRegistered = false;
     private boolean mBtReceiverRegistered = false;
 
+    private BitSet ACKBits;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,7 +52,9 @@ public class MainActivity extends AppCompatActivity {
 
         mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
 
-        MyBluetoothAdapter adapter = new MyBluetoothAdapter(this);
+        final MyBluetoothAdapter adapter = new MyBluetoothAdapter(this);
+
+        ACKBits = new BitSet(250); //Need to change this absolute value
 
         mBtHelper = new BtHelper(adapter, new DeviceDiscoveryHandler() {
             long mLastScanStarted;
@@ -62,6 +67,14 @@ public class MainActivity extends AppCompatActivity {
                     mBtLogger.writeScanResults(receivedPacket, mLastScanStarted,
                             System.currentTimeMillis());
                 }
+
+                //ACKing mechanism
+                String mBTName = receivedPacket.getName();
+                byte[] packetMessage = mBTName.getBytes();
+                byte receivedPacketID = packetMessage[0];
+                ACKBits.set(receivedPacketID);
+                
+                adapter.setName(ACKBits.toString());
             }
 
             @Override
