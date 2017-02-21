@@ -14,6 +14,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.UnsupportedEncodingException;
 import java.util.BitSet;
@@ -43,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean mBtReceiverRegistered = false;
 
     private BitSet ACKBits;
+    final byte fromAddr = (byte) 1; //Teacher's Device Addr set to 1
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
 
         ACKBits = new BitSet(256); //Need to change this absolute value
         ACKBits.clear();
-        final byte fromAddr = (byte)0; //Teacher's Device Addr set to 0
+
 
         mBtHelper = new BtHelper(adapter, new DeviceDiscoveryHandler() {
             long mLastScanStarted;
@@ -66,44 +68,23 @@ public class MainActivity extends AppCompatActivity {
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void handleDiscovery(BluetoothDevice receivedPacket) throws UnsupportedEncodingException {
+
                 mBtDiscoveredSet.add(receivedPacket.getAddress());
+
                 mBtTv.setText("" + mBtDiscoveredSet.size());
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
                     mBtLogger.writeScanResults(receivedPacket, mLastScanStarted,
                             System.currentTimeMillis());
                 }
 
-                //ACKing mechanism
-                //Dirty Testing
-//                String data = "12000:1000000000000000000000000000000000000000000000000";
-//                byte[] dataByte = data.getBytes("UTF-8");
-//                byte[] pdu = new byte[1 + dataByte.length];
-//                pdu[0] = (byte)100;
-//                System.arraycopy(dataByte, 0, pdu, 1, dataByte.length);
-//                //Log.d("PDU: ", Arrays.toString(pdu));
-
-//                String pduString = new String(pdu, "UTF-8");
-
-                String mBTName = receivedPacket.getName();
-                byte[] packetMessage = mBTName.getBytes("UTF-8");
-                byte receivedPacketID = packetMessage[0];
-                //Log.d("PacketID: ", String.valueOf(receivedPacketID));
-                if(!ACKBits.get(receivedPacketID)){
-                    ACKBits.set(receivedPacketID);
-                    //Log.d("ACKBitsString:", ACKBits.toString());
-                }
-
-                //Needs complete modification for final product
-                String ACKString = ACKBits.toString(); //Creates a string like {100,1,20} where 100,1,20 are the set bits
-                String pdu =  String.valueOf(fromAddr) + ACKString; //Creates a PDU like 0{100,1,20}
-                Log.d("PDU:", pdu);
-                adapter.setName(pdu); //Sets it as name of the BT Device
+                adapter.setName(handleAck(receivedPacket.getName()));
             }
 
             @Override
             public void handleStarted() {
                 mLastScanStarted = System.currentTimeMillis();
                 mBtLogger.writeScanTiming(BtLogger.ScanType.STARTED, mLastScanStarted);
+                ACKBits.clear();
             }
 
             @Override
@@ -113,6 +94,38 @@ public class MainActivity extends AppCompatActivity {
                 mBtHelper.startDiscovery();
             }
         });
+    }
+
+    public String handleAck(String receivedDeviceName){
+
+        try{
+            if(receivedDeviceName != null){
+                LinkLayerPdu receivedPdu = new LinkLayerPdu(receivedDeviceName);
+                Log.e("RECEIVED", String.valueOf(receivedPdu.getFromAddress()));
+                byte receivedPacketID = receivedPdu.getFromAddress();
+
+                if(!ACKBits.get(receivedPacketID)){
+                    ACKBits.set(receivedPacketID);
+
+                }
+
+                //Needs complete modification for final product
+                String ACKString = ACKBits.toString(); //Creates a string like {100,1,20} where 100,1,20 are the set bits
+
+                LinkLayerPdu sendPdu = new LinkLayerPdu(fromAddr, ACKString.getBytes("UTF-8"));
+                Log.d("ACK BITS", ACKString);
+                Log.d("PDU:", sendPdu.getPduAsString());
+                return sendPdu.getPduAsString();
+            }
+            else{
+                return null;
+            }
+
+        }
+        catch (UnsupportedEncodingException e){
+            return null;
+        }
+
     }
 
     BroadcastReceiver mWifiScanReceiver = new BroadcastReceiver() {
