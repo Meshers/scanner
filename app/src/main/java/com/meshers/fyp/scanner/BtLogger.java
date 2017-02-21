@@ -13,6 +13,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 
 public class BtLogger {
     private final File mBtResultsFile;
@@ -39,7 +40,7 @@ public class BtLogger {
         }
         try {
             PrintWriter pw = new PrintWriter(mBtResultsFile);
-            pw.println("StartTime,DiscoveryTime,Name,Address,Type,BondState,BtClass");
+            pw.println("StartTime,DiscoveryTime,Name,Address,Type,BondState,BtClass,Length");
             pw.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -60,19 +61,32 @@ public class BtLogger {
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     public void writeScanResults(BluetoothDevice device, long startTime, long discoveryTime) {
 
+        int length = 0;
+
+
+
         try {
             PrintWriter pw = new PrintWriter(new FileOutputStream(mBtResultsFile, true));
+
+            if(device.getName() != null){
+                length = device.getName().getBytes("UTF-8").length;
+            }
+
             String line = startTime
                     + "," + discoveryTime
                     + "," + device.getName()
                     + "," + device.getAddress()
                     + "," + device.getType()
                     + "," + device.getBondState()
-                    + "," + device.getBluetoothClass().getDeviceClass();
+                    + "," + device.getBluetoothClass().getDeviceClass()
+                    + "," + length;
             pw.println(line);
             pw.close();
         } catch (FileNotFoundException e) {
-            Log.e("WifiLogger", "Failed writing WIFI results", e);
+            Log.e("BT Logger", "Failed writing BT results", e);
+        }
+        catch (UnsupportedEncodingException e) {
+            Log.e("BT Logger", "Failed fue to conversion of name to byte array", e);
         }
     }
 }
