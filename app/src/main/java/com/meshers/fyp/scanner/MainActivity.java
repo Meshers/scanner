@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
         ACKBits = new BitSet(256); //Need to change this absolute value
         ACKBits.clear();
-        final byte fromAddr = (byte)0; //Teacher's Device Addr set to 0
+        final byte fromAddr = (byte)1; //Teacher's Device Addr set to 1
 
         mBtHelper = new BtHelper(adapter, new DeviceDiscoveryHandler() {
             long mLastScanStarted;
