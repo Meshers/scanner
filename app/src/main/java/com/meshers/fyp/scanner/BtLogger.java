@@ -1,10 +1,8 @@
 package com.meshers.fyp.scanner;
 
 import android.bluetooth.BluetoothDevice;
-import android.net.wifi.ScanResult;
 import android.os.Build;
 import android.os.Environment;
-import android.os.SystemClock;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 
@@ -40,7 +38,7 @@ public class BtLogger {
         }
         try {
             PrintWriter pw = new PrintWriter(mBtResultsFile);
-            pw.println("StartTime,DiscoveryTime,Name,Address,Type,BondState,BtClass,Length");
+            pw.println("StartTime,DiscoveryTime,ID,Data,MACAddress,Type,BondState,BtClass,Length");
             pw.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -59,11 +57,10 @@ public class BtLogger {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public void writeScanResults(BluetoothDevice device, long startTime, long discoveryTime) {
+    public void writeScanResults(BluetoothDevice device, long startTime, long discoveryTime) throws UnsupportedEncodingException {
 
+        LinkLayerPdu pdu = new LinkLayerPdu(device.getName());
         int length = 0;
-
-
 
         try {
             PrintWriter pw = new PrintWriter(new FileOutputStream(mBtResultsFile, true));
@@ -74,7 +71,8 @@ public class BtLogger {
 
             String line = startTime
                     + "," + discoveryTime
-                    + "," + device.getName()
+                    + "," + String.valueOf((int)pdu.getFromAddress())
+                    + "," + pdu.getDataAsString()
                     + "," + device.getAddress()
                     + "," + device.getType()
                     + "," + device.getBondState()

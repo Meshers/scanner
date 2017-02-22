@@ -59,7 +59,12 @@ public class MyBluetoothAdapter {
         } else {
 //            if (myBluetoothAdapter.getScanMode() !=
 //                    BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
-            myBluetoothAdapter.setName(name);
+            if(name != null){
+                myBluetoothAdapter.setName(name);
+            }
+            else{
+                myBluetoothAdapter.setName("");
+            }
             makeDiscoverable(3000);
         }
     }

@@ -14,7 +14,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.io.UnsupportedEncodingException;
 import java.util.BitSet;
@@ -44,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean mBtReceiverRegistered = false;
 
     private BitSet ACKBits;
+    String ACKString;
     final byte fromAddr = (byte) 1; //Teacher's Device Addr set to 1
 
     @Override
@@ -58,12 +58,15 @@ public class MainActivity extends AppCompatActivity {
 
         final MyBluetoothAdapter adapter = new MyBluetoothAdapter(this);
 
-        ACKBits = new BitSet(256); //Need to change this absolute value
+        adapter.on("Initializing");
+
+        ACKBits = new BitSet(240); //Need to change this absolute value
         ACKBits.clear();
 
 
         mBtHelper = new BtHelper(adapter, new DeviceDiscoveryHandler() {
             long mLastScanStarted;
+            String stringBeacon;
 
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
@@ -76,8 +79,7 @@ public class MainActivity extends AppCompatActivity {
                     mBtLogger.writeScanResults(receivedPacket, mLastScanStarted,
                             System.currentTimeMillis());
                 }
-
-                adapter.setName(handleAck(receivedPacket.getName()));
+                setACKBits(receivedPacket.getName());
             }
 
             @Override
@@ -91,39 +93,42 @@ public class MainActivity extends AppCompatActivity {
             public void handleFinished() {
                 mBtLogger.writeScanTiming(BtLogger.ScanType.FINISHED, System.currentTimeMillis());
                 mBtLogger.writeScanTiming(BtLogger.ScanType.REQUESTED, System.currentTimeMillis());
+                LinkLayerPdu sendPdu = null;
+
+                try {
+                    sendPdu = new LinkLayerPdu(fromAddr, ACKString.getBytes("UTF-8"));
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
+
+                adapter.setName(sendPdu.getPduAsString());
                 mBtHelper.startDiscovery();
             }
         });
     }
 
-    public String handleAck(String receivedDeviceName){
+    public void setACKBits(String receivedDeviceName){
 
         try{
             if(receivedDeviceName != null){
                 LinkLayerPdu receivedPdu = new LinkLayerPdu(receivedDeviceName);
-                Log.e("RECEIVED", String.valueOf(receivedPdu.getFromAddress()));
+                Log.e("RECEIVED: ", String.valueOf(receivedPdu.getFromAddress()));
                 byte receivedPacketID = receivedPdu.getFromAddress();
 
                 if(!ACKBits.get(receivedPacketID)){
                     ACKBits.set(receivedPacketID);
-
                 }
 
                 //Needs complete modification for final product
-                String ACKString = ACKBits.toString(); //Creates a string like {100,1,20} where 100,1,20 are the set bits
+                ACKString = ACKBits.toString(); //Creates a string like {100,1,20} where 100,1,20 are the set bits
 
                 LinkLayerPdu sendPdu = new LinkLayerPdu(fromAddr, ACKString.getBytes("UTF-8"));
                 Log.d("ACK BITS", ACKString);
                 Log.d("PDU:", sendPdu.getPduAsString());
-                return sendPdu.getPduAsString();
             }
-            else{
-                return null;
-            }
-
         }
         catch (UnsupportedEncodingException e){
-            return null;
+            e.printStackTrace();
         }
 
     }
