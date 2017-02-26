@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean mWifiReceiverRegistered = false;
     private boolean mBtReceiverRegistered = false;
 
-    private BitSet ACKBits;
+    private BitSet ACKBits = new BitSet(240); //Need to change this absolute value
     String ACKString;
     final byte fromAddr = (byte) 1; //Teacher's Device Addr set to 1
 
@@ -60,13 +60,10 @@ public class MainActivity extends AppCompatActivity {
 
         adapter.on("Initializing");
 
-        ACKBits = new BitSet(240); //Need to change this absolute value
         ACKBits.clear();
-
 
         mBtHelper = new BtHelper(adapter, new DeviceDiscoveryHandler() {
             long mLastScanStarted;
-            String stringBeacon;
 
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
@@ -86,7 +83,6 @@ public class MainActivity extends AppCompatActivity {
             public void handleStarted() {
                 mLastScanStarted = System.currentTimeMillis();
                 mBtLogger.writeScanTiming(BtLogger.ScanType.STARTED, mLastScanStarted);
-                ACKBits.clear();
             }
 
             @Override
