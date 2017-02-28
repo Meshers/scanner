@@ -43,8 +43,11 @@ public class MainActivity extends AppCompatActivity {
     private boolean mBtReceiverRegistered = false;
 
     private BitSet ACKBits = new BitSet(240); //Need to change this absolute value
-    String ACKString;
+
+    String ACKString = "";
     final byte fromAddr = (byte) 1; //Teacher's Device Addr set to 1
+
+    final MyBluetoothAdapter adapter = new MyBluetoothAdapter(this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,14 +56,9 @@ public class MainActivity extends AppCompatActivity {
 
         mWifiTv = (TextView) findViewById(R.id.wifi_tv);
         mBtTv = (TextView) findViewById(R.id.bt_tv);
+        ACKBits.clear();
 
         mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-
-        final MyBluetoothAdapter adapter = new MyBluetoothAdapter(this);
-
-        adapter.on("Initializing");
-
-        ACKBits.clear();
 
         mBtHelper = new BtHelper(adapter, new DeviceDiscoveryHandler() {
             long mLastScanStarted;
@@ -97,7 +95,10 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
 
-                adapter.setName(sendPdu.getPduAsString());
+                if(adapter != null){
+                    adapter.setName(sendPdu.getPduAsString());
+                }
+
                 mBtHelper.startDiscovery();
             }
         });
@@ -177,6 +178,8 @@ public class MainActivity extends AppCompatActivity {
             mBtHelper.startListening();
             mBtReceiverRegistered = true;
         }
+
+        adapter.on("");
         startBtScan();
     }
 

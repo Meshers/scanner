@@ -37,8 +37,8 @@ public class MyBluetoothAdapter {
         return myBluetoothAdapter != null;
     }
 
-    public boolean on(String BTName) {
-        this.BTName = BTName;
+    public boolean on(String name) {
+        this.BTName = name;
 
         if (!myBluetoothAdapter.isEnabled()) {
             Intent turnOnIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -46,6 +46,14 @@ public class MyBluetoothAdapter {
 
             return true;
         } else {
+
+            if(name != null){
+                myBluetoothAdapter.setName(name);
+            }
+            else{
+                myBluetoothAdapter.setName("");
+            }
+            makeDiscoverable(3000);
             return false;
         }
 
@@ -57,8 +65,6 @@ public class MyBluetoothAdapter {
             Intent turnOnIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             activity.startActivityForResult(turnOnIntent, REQUEST_ENABLE_BT);
         } else {
-//            if (myBluetoothAdapter.getScanMode() !=
-//                    BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
             if(name != null){
                 myBluetoothAdapter.setName(name);
             }
