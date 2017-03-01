@@ -59,7 +59,14 @@ public class BtLogger {
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     public void writeScanResults(BluetoothDevice device, long startTime, long discoveryTime) throws UnsupportedEncodingException {
 
-        LinkLayerPdu pdu = new LinkLayerPdu(device.getName());
+        LinkLayerPdu pdu;
+        if(device.getName() != null){
+            pdu = new LinkLayerPdu(device.getName());
+        }
+        else{
+            pdu = new LinkLayerPdu((byte)0, new byte[]{0});
+        }
+
         int length = 0;
 
         try {
