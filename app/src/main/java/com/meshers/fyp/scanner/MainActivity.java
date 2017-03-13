@@ -11,14 +11,19 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
 import java.io.UnsupportedEncodingException;
+import java.text.SimpleDateFormat;
 import java.util.BitSet;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -33,11 +38,14 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView mWifiTv;
     private TextView mBtTv;
+    private TextView mBtCountTv;
 
     private HashSet<String> mWifiDiscoveredSet;
     private HashSet<String> mWifiDiscoveredSet2;
 
     private HashSet<String> mBtDiscoveredSet;
+
+    private HashMap<String, String> mBtDiscoveredMap = new HashMap<String, String>();
 
     private boolean mWifiReceiverRegistered = false;
     private boolean mBtReceiverRegistered = false;
@@ -46,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
     String ACKString = "";
     final byte fromAddr = (byte) 1; //Teacher's Device Addr set to 1
+    String mBtListString = "";
 
     final MyBluetoothAdapter adapter = new MyBluetoothAdapter(this);
 
@@ -56,6 +65,9 @@ public class MainActivity extends AppCompatActivity {
 
         mWifiTv = (TextView) findViewById(R.id.wifi_tv);
         mBtTv = (TextView) findViewById(R.id.bt_tv);
+        mBtTv.setMovementMethod(new ScrollingMovementMethod());
+        mBtCountTv =  (TextView)  findViewById(R.id.btcount_tv);
+
         ACKBits.clear();
 
         mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
@@ -67,9 +79,22 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void handleDiscovery(BluetoothDevice receivedPacket) throws UnsupportedEncodingException {
 
+                mBtListString = "";
+
                 mBtDiscoveredSet.add(receivedPacket.getAddress());
 
-                mBtTv.setText("" + mBtDiscoveredSet.size());
+                if(receivedPacket.getName() != null && receivedPacket.getAddress() != null){
+                    LinkLayerPdu receivedPdu = new LinkLayerPdu(receivedPacket.getName());
+                    mBtDiscoveredMap.put(receivedPacket.getAddress(), currentTimeToString() + ";" + receivedPdu.getFromAddress());
+                }
+
+                for (Map.Entry<String, String> entry : mBtDiscoveredMap.entrySet()) {
+                    mBtListString += "" + entry.getKey() + ";" + entry.getValue() + "\n";
+                }
+
+                mBtTv.setText(mBtListString);
+                mBtCountTv.setText("" + mBtDiscoveredSet.size());
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
                     mBtLogger.writeScanResults(receivedPacket, mLastScanStarted,
                             System.currentTimeMillis());
@@ -102,6 +127,12 @@ public class MainActivity extends AppCompatActivity {
                 mBtHelper.startDiscovery();
             }
         });
+    }
+
+    public static String currentTimeToString() {
+        SimpleDateFormat formatter = new SimpleDateFormat("HH:mm:ss.SSS");
+        Date curTime = new Date(System.currentTimeMillis());
+        return formatter.format(curTime);
     }
 
     public void setACKBits(String receivedDeviceName){
