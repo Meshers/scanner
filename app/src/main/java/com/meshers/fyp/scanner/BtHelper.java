@@ -31,7 +31,8 @@ public class BtHelper {
             // Get the BluetoothDevice object from the Intent
             BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
             if (device!= null) {
-                mDiscoveryHandler.handleDiscovery(device);
+                mDiscoveryHandler.handleDiscovery(device,
+                        intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE));
             }
         }
     };

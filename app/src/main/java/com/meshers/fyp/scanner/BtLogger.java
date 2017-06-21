@@ -58,7 +58,7 @@ public class BtLogger {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public void writeScanResults(BluetoothDevice device, long startTime, long discoveryTime) {
+    public void writeScanResults(BluetoothDevice device, short rssi, long startTime, long discoveryTime) {
 
         try {
             PrintWriter pw = new PrintWriter(new FileOutputStream(mBtResultsFile, true));
@@ -68,7 +68,8 @@ public class BtLogger {
                     + "," + device.getAddress()
                     + "," + device.getType()
                     + "," + device.getBondState()
-                    + "," + device.getBluetoothClass().getDeviceClass();
+                    + "," + device.getBluetoothClass().getDeviceClass()
+                    + "," + rssi;
             pw.println(line);
             pw.close();
         } catch (FileNotFoundException e) {

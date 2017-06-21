@@ -55,11 +55,11 @@ public class MainActivity extends AppCompatActivity {
             long mLastScanStarted;
 
             @Override
-            public void handleDiscovery(BluetoothDevice receivedPacket) {
+            public void handleDiscovery(BluetoothDevice receivedPacket, short rssi) {
                 mBtDiscoveredSet.add(receivedPacket.getAddress());
                 mBtTv.setText("" + mBtDiscoveredSet.size());
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                    mBtLogger.writeScanResults(receivedPacket, mLastScanStarted,
+                    mBtLogger.writeScanResults(receivedPacket, rssi, mLastScanStarted,
                             System.currentTimeMillis());
                 }
             }
